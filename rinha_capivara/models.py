@@ -1,7 +1,7 @@
 from enum import Enum
 
 from datetime import datetime
-from sqlalchemy import ForeignKey, String, DateTime
+from sqlalchemy import ForeignKey, String
 from sqlalchemy.orm import DeclarativeBase, relationship
 from sqlalchemy.orm import Mapped
 from sqlalchemy.orm import mapped_column
@@ -36,5 +36,5 @@ class Transacao(Base):
     tipo: Mapped[TipoTransacao]
     descricao: Mapped[str] = mapped_column(String(10))
     realizada_em: Mapped[datetime]
-    cliente_id:Mapped[int] = mapped_column(ForeignKey("clientes.id"))
+    cliente_id: Mapped[int] = mapped_column(ForeignKey("clientes.id"))
     cliente: Mapped["Cliente"] = relationship(back_populates="transacoes")

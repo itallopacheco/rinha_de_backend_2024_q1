@@ -7,7 +7,7 @@ from sqlalchemy.orm import Session
 
 from rinha_capivara.database import get_session
 from rinha_capivara.models import Cliente, Transacao, TipoTransacao
-from rinha_capivara.schemas import TransacaoSchema, SaldoCliente
+from rinha_capivara.schemas import TransacaoSchema, SaldoCliente, SaldoClienteExtrato, Extrato, TransacaoPublic
 
 app = FastAPI()
 
@@ -26,7 +26,7 @@ def get_clientes(session: Session, skip: int = 0, limit: int = 100):
 
 
 @app.post('/clientes/{cliente_id}/transacoes')
-def fazer_transacao(cliente_id: int, transacao: TransacaoSchema, session:Session):
+def fazer_transacao(cliente_id: int, transacao: TransacaoSchema, session: Session):
     cliente = session.scalar(select(Cliente).where(Cliente.id == cliente_id))
 
     if not cliente:
@@ -49,9 +49,42 @@ def fazer_transacao(cliente_id: int, transacao: TransacaoSchema, session:Session
     if transacao.tipo == TipoTransacao.d:
         cliente.saldo -= transacao.valor
 
-    saldo_resposta = SaldoCliente(limite=cliente.limite
-                                  , saldo=cliente.saldo)
+    saldo_resposta = SaldoCliente(limite=cliente.limite, saldo=cliente.saldo)
     session.add(transacao)
     session.commit()
     return saldo_resposta
 
+
+@app.get('/clientes/{id_usuario}/extrato')
+def get_cliente_extrato(id_usuario: int, session: Session):
+    cliente = session.scalar(select(Cliente).where(Cliente.id == id_usuario))
+
+    if not cliente:
+        raise HTTPException(status_code=404, detail='Cliente não encontrado.')
+
+    saldo = SaldoClienteExtrato(
+        total=cliente.saldo,
+        data_extrato=datetime.datetime.utcnow(),
+        limite=cliente.limite,
+    )
+    ultimas_transacoes = []
+    query = (
+        session.query(Transacao)
+        .join(Cliente)
+        .filter(Cliente.id == id_usuario)
+        .order_by(Transacao.realizada_em.desc())
+        .limit(10)
+    )
+    results = query.all()
+    for result in results:
+        transacao = TransacaoPublic(
+            valor=result.valor,
+            tipo=result.tipo,
+            descricao=result.descricao,
+            realizada_em=result.realizada_em
+        )
+        ultimas_transacoes.append(transacao)
+    return Extrato(
+        saldo=saldo,
+        ultimas_transacoes=ultimas_transacoes
+    )

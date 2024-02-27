@@ -1,6 +1,42 @@
-version: '3'
+version: '3.5'
 
 services:
+  api01: &api
+    build:
+      context: .
+      dockerfile: Dockerfile
+    hostname: api01
+    ports:
+      - "8081:8000"
+    depends_on:
+      - db
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/rinha_db"
+    networks:
+      - rinha-backend
+
+  api02:
+    <<: *api
+    hostname: api02
+    environment:
+      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/rinha_db"
+    ports:
+      - "8082:8000"
+    networks:
+      - rinha-backend
+
+  nginx:
+    image: nginx:latest
+    volumes:
+      - ./nginx.conf:/etc/nginx/nginx.conf:ro
+    depends_on:
+      - api01
+      - api02
+    ports:
+      - "9999:9999"
+    networks:
+      - rinha-backend
+
   db:
     image: postgres
     environment:
@@ -11,15 +47,8 @@ services:
       - "5432:5432"
     volumes:
       - ./init.sql:/docker-entrypoint-initdb.d/init.sql
-
-
-  api:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    ports:
-      - "8000:8000"
-    depends_on:
-      - db
-    environment:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/rinha_db"
+    networks:
+      - rinha-backend
+networks:
+  rinha-backend:
+    driver: bridge
