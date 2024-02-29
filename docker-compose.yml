@@ -11,7 +11,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/rinha_db"
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/rinha_db"
     networks:
       - rinha-backend
 
@@ -19,7 +19,7 @@ services:
     <<: *api
     hostname: api02
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/rinha_db"
+      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/rinha_db"
     ports:
       - "8082:8000"
     networks:
