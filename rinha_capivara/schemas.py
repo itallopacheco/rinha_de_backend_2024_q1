@@ -27,6 +27,11 @@ class TransacaoSchema(BaseModel):
     descricao: constr(min_length=1, max_length=10)
     realizada_em: datetime
 
+class TransacaoReq(BaseModel):
+    valor: conint(ge=0)
+    tipo: str = Field(pattern=r"[cd]")
+    descricao: constr(min_length=1, max_length=10)
+
 
 class SaldoCliente(BaseModel):
     limite: int
