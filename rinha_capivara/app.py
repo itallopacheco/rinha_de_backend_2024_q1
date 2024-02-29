@@ -1,7 +1,7 @@
 import datetime
 
 from typing import Annotated
-from sqlalchemy import select
+from sqlalchemy import select, desc
 from fastapi import FastAPI, Depends, HTTPException
 from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
@@ -24,7 +24,8 @@ def health():
 async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: AsyncSession):
     async with session.begin():
 
-        cliente = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update()).scalar()
+        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update())
+        cliente = cliente_result.scalar()
 
         if not cliente:
             raise HTTPException(status_code=404, detail='Cliente não encontrado.')
@@ -56,7 +57,8 @@ async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: Asy
 @app.get('/clientes/{cliente_id}/extrato')
 async def get_cliente_extrato(cliente_id: int, session: AsyncSession):
     async with session.begin():
-        cliente = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update()).scalar()
+        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update())
+        cliente = cliente_result.scalar()
 
         if not cliente:
             raise HTTPException(status_code=404, detail='Cliente não encontrado.')
@@ -68,14 +70,14 @@ async def get_cliente_extrato(cliente_id: int, session: AsyncSession):
         )
         ultimas_transacoes = []
         query = (
-            session.query(Transacao)
+            select(Transacao)
             .join(Cliente)
             .filter(Cliente.id == cliente_id)
             .order_by(Transacao.realizada_em.desc())
             .limit(10)
         )
-        results = await query.all()
-        for result in results:
+        results = await session.execute(query)
+        for result in results.scalars():
             transacao = TransacaoPublic(
                 valor=result.valor,
                 tipo=result.tipo,
@@ -83,7 +85,8 @@ async def get_cliente_extrato(cliente_id: int, session: AsyncSession):
                 realizada_em=result.realizada_em
             )
             ultimas_transacoes.append(transacao)
-    return Extrato(
-        saldo=saldo,
-        ultimas_transacoes=ultimas_transacoes
-    )
+        extrato = Extrato(
+            saldo=saldo,
+            ultimas_transacoes=ultimas_transacoes
+        )
+    return extrato
