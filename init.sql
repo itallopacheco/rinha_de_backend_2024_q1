@@ -20,6 +20,7 @@ CREATE TABLE transacoes (
 );
 
 ALTER TABLE transacoes ADD CONSTRAINT "transacao_cliente_id_fk" FOREIGN KEY (cliente_id) REFERENCES clientes (id);
+CREATE INDEX "transacao_clientE_id_id_idx" ON transacoes (cliente_id, "id");
 
 INSERT INTO clientes (id, saldo, limite)
 VALUES
