@@ -17,8 +17,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.35"
-          memory: "90MB"
+          cpus: "0.5"
+          memory: "100MB"
 
   api02:
     <<: *api
@@ -63,8 +63,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.6"
-          memory: "350MB"
+          cpus: "0.3"
+          memory: "330MB"
 
   pgadmin:
     image: dpage/pgadmin4
