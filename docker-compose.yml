@@ -17,8 +17,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.4"
-          memory: "175MB"
+          cpus: "0.35"
+          memory: "90MB"
 
   api02:
     <<: *api
@@ -63,8 +63,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: "130MB"
+          cpus: "0.6"
+          memory: "350MB"
+
+  pgadmin:
+    image: dpage/pgadmin4
+    environment:
+      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+      PGADMIN_DEFAULT_PASSWORD: admin
+      PGADMIN_LISTEN_PORT: 5050
+    networks:
+      - rinha-backend
+    depends_on:
+      - db
+    ports:
+      - "5050:5050"
 networks:
   rinha-backend:
     driver: bridge

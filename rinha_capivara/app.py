@@ -1,9 +1,10 @@
 import datetime
-
+import logging
 from typing import Annotated
+
+import sqlalchemy
 from sqlalchemy import select, desc
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.orm import Session
 from sqlalchemy.ext.asyncio import AsyncSession
 from rinha_capivara.database import get_async_session
 from rinha_capivara.models import Cliente, Transacao, TipoTransacao
@@ -24,15 +25,28 @@ def health():
 async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: AsyncSession):
     async with session.begin():
 
-        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update())
-        cliente = cliente_result.scalar()
+        resultado = await session.execute(
+            sqlalchemy.text(
+                "SELECT * FROM atualizar_saldo(:cliente_id, :tipo_transacao, :valor_transacao)"
+            ),
+            {
+                "cliente_id": cliente_id,
+                "tipo_transacao": transacao.tipo,
+                "valor_transacao": transacao.valor
+            }
+        )
 
-        if not cliente:
-            raise HTTPException(status_code=404, detail='Cliente não encontrado.')
+        text_msg, is_error, saldo_atualizado, limite_cliente = resultado.fetchone()
+        # text_msg_str = str(text_msg)
+        # is_error_str = str(is_error)
+        saldo_atualizado_long = int(saldo_atualizado)
+        limite_cliente_long = int(limite_cliente)
 
-        saldo_cliente = cliente.saldo + cliente.limite
-        if transacao.tipo == TipoTransacao.d and saldo_cliente < transacao.valor:
-            raise HTTPException(status_code=422, detail='Saldo insuficiente.')
+        if is_error:
+            if text_msg == 'Cliente não encontrado.':
+                raise HTTPException(status_code=404)
+            if text_msg == 'Limite ultrapassado.':
+                raise HTTPException(status_code=422)
 
         nova_transacao = Transacao(
             valor=transacao.valor,
@@ -42,22 +56,21 @@ async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: Asy
             realizada_em=datetime.datetime.utcnow()
         )
 
-        if transacao.tipo == TipoTransacao.c:
-            cliente.saldo += transacao.valor
-        if transacao.tipo == TipoTransacao.d:
-            cliente.saldo -= transacao.valor
-
-        saldo_resposta = SaldoCliente(limite=cliente.limite, saldo=cliente.saldo)
         session.add(nova_transacao)
         await session.commit()
 
-    return saldo_resposta
+        saldo_cliente = SaldoCliente(
+            limite = limite_cliente_long,
+            saldo = saldo_atualizado_long
+        )
+
+    return saldo_cliente
 
 
 @app.get('/clientes/{cliente_id}/extrato')
 async def get_cliente_extrato(cliente_id: int, session: AsyncSession):
     async with session.begin():
-        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id).with_for_update())
+        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id))
         cliente = cliente_result.scalar()
 
         if not cliente:
