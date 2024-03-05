@@ -22,6 +22,9 @@ CREATE TABLE transacoes (
 ALTER TABLE transacoes ADD CONSTRAINT "transacao_cliente_id_fk" FOREIGN KEY (cliente_id) REFERENCES clientes (id);
 CREATE INDEX IF NOT EXISTS  idx_cliente_id ON clientes(id);
 CREATE INDEX IF NOT EXISTS idx_transacao_id_cliente_realizada_em_desc ON transacoes(cliente_id, realizada_em DESC);
+CREATE EXTENSION IF NOT EXISTS pg_prewarm;
+SELECT pg_prewarm('clientes');
+SELECT pg_prewarm('transacoes');
 
 
 CREATE OR REPLACE FUNCTION atualizar_saldo(cliente_id INT, tipo_transacao CHAR(1), valor_transacao NUMERIC,
