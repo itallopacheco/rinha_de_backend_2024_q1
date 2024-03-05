@@ -3,13 +3,13 @@ from sqlalchemy.orm import sessionmaker
 
 from rinha_capivara.settings import Settings
 
-engine = create_engine(Settings().DATABASE_URL)
+engine = create_engine(Settings().DATABASE_URL, pool_size=10)
 SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
 
-def get_db():
-    db = SessionLocal()
+async def get_db():
+    session = SessionLocal()
     try:
-        yield db
+        yield session
     finally:
-        db.close()
+        session.close()

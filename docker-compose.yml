@@ -11,7 +11,7 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: "postgresql://postgres:postgres@db:5432/rinha_db"
+      DATABASE_URL: "postgresql+psycopg2://postgres:postgres@db:5432/rinha_db"
     networks:
       - rinha-backend
     deploy:
@@ -23,8 +23,6 @@ services:
   api02:
     <<: *api
     hostname: api02
-    environment:
-      DATABASE_URL: "postgresql://postgres:postgres@db:5432/rinha_db"
     ports:
       - "8082:8000"
     networks:
@@ -44,7 +42,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.1"
+          cpus: "0.15"
           memory: "40MB"
 
   db:
@@ -63,7 +61,7 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.5"
+          cpus: "0.45"
           memory: "150MB"
 #
 #  pgadmin:
