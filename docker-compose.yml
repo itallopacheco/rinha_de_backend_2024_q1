@@ -11,20 +11,20 @@ services:
     depends_on:
       - db
     environment:
-      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/rinha_db"
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/rinha_db"
     networks:
       - rinha-backend
     deploy:
       resources:
         limits:
-          cpus: "0.5"
-          memory: "100MB"
+          cpus: "0.45"
+          memory: "180MB"
 
   api02:
     <<: *api
     hostname: api02
     environment:
-      DATABASE_URL: "postgresql+asyncpg://postgres:postgres@db:5432/rinha_db"
+      DATABASE_URL: "postgresql://postgres:postgres@db:5432/rinha_db"
     ports:
       - "8082:8000"
     networks:
@@ -44,8 +44,8 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.2"
-          memory: "20MB"
+          cpus: "0.1"
+          memory: "40MB"
 
   db:
     image: postgres
@@ -63,21 +63,21 @@ services:
     deploy:
       resources:
         limits:
-          cpus: "0.3"
-          memory: "330MB"
-
-  pgadmin:
-    image: dpage/pgadmin4
-    environment:
-      PGADMIN_DEFAULT_EMAIL: admin@admin.com
-      PGADMIN_DEFAULT_PASSWORD: admin
-      PGADMIN_LISTEN_PORT: 5050
-    networks:
-      - rinha-backend
-    depends_on:
-      - db
-    ports:
-      - "5050:5050"
+          cpus: "0.5"
+          memory: "150MB"
+#
+#  pgadmin:
+#    image: dpage/pgadmin4
+#    environment:
+#      PGADMIN_DEFAULT_EMAIL: admin@admin.com
+#      PGADMIN_DEFAULT_PASSWORD: admin
+#      PGADMIN_LISTEN_PORT: 5050
+#    networks:
+#      - rinha-backend
+#    depends_on:
+#      - db
+#    ports:
+#      - "5050:5050"
 networks:
   rinha-backend:
     driver: bridge

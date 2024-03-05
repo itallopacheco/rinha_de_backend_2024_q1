@@ -1,4 +1,4 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 ENV POETRY_VIRTUALENVS_CREATE=false
 
 WORKDIR app/
@@ -10,4 +10,4 @@ RUN poetry config installer.max-workers 10
 RUN poetry install --no-interaction --no-ansi
 
 EXPOSE 8000
-CMD [ "poetry", "run", "uvicorn", "--host", "0.0.0.0", "rinha_capivara.app:app" ]
+CMD [ "uvicorn","rinha_capivara.app:app","--host", "0.0.0.0" ]

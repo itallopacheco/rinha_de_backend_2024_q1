@@ -1,19 +1,17 @@
 import datetime
-import logging
 from typing import Annotated
 
 import sqlalchemy
 from sqlalchemy import select, desc
 from fastapi import FastAPI, Depends, HTTPException
-from sqlalchemy.ext.asyncio import AsyncSession
-from rinha_capivara.database import get_async_session
+from sqlalchemy.orm import Session
+
+from rinha_capivara.database import get_db
 from rinha_capivara.models import Cliente, Transacao, TipoTransacao
 from rinha_capivara.schemas import SaldoCliente, SaldoClienteExtrato, Extrato, TransacaoPublic, \
     TransacaoReq
 
 app = FastAPI()
-
-AsyncSession = Annotated[AsyncSession, Depends(get_async_session)]
 
 
 @app.get('/')
@@ -22,10 +20,9 @@ def health():
 
 
 @app.post('/clientes/{cliente_id}/transacoes')
-async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: AsyncSession):
-    async with session.begin():
-
-        resultado = await session.execute(
+def fazer_transacao(cliente_id: int, transacao: TransacaoReq, db: Session = Depends(get_db)):
+    with db as session:
+        resultado = session.execute(
             sqlalchemy.text(
                 "SELECT * FROM atualizar_saldo(:cliente_id, :tipo_transacao, :valor_transacao)"
             ),
@@ -57,45 +54,69 @@ async def fazer_transacao(cliente_id: int, transacao: TransacaoReq, session: Asy
         )
 
         session.add(nova_transacao)
-        await session.commit()
+        session.commit()
 
         saldo_cliente = SaldoCliente(
-            limite = limite_cliente_long,
-            saldo = saldo_atualizado_long
+            limite=limite_cliente_long,
+            saldo=saldo_atualizado_long
         )
 
     return saldo_cliente
 
 
 @app.get('/clientes/{cliente_id}/extrato')
-async def get_cliente_extrato(cliente_id: int, session: AsyncSession):
-    async with session.begin():
-        cliente_result = await session.execute(select(Cliente).where(Cliente.id == cliente_id))
-        cliente = cliente_result.scalar()
+def get_cliente_extrato(cliente_id: int, db: Session = Depends(get_db)):
+    with db as session:
+        cliente_result = session.execute(
+            sqlalchemy.text(
+                "SELECT clientes.saldo, clientes.limite FROM clientes WHERE clientes.id = :cliente_id"
+            ),
+            {'cliente_id': cliente_id}
+
+        )
+        cliente = cliente_result.fetchone()
 
         if not cliente:
             raise HTTPException(status_code=404, detail='Cliente não encontrado.')
 
         saldo = SaldoClienteExtrato(
-            total=cliente.saldo,
+            total=cliente[0],
             data_extrato=datetime.datetime.utcnow(),
-            limite=cliente.limite,
+            limite=cliente[1],
         )
+
         ultimas_transacoes = []
-        query = (
-            select(Transacao)
-            .join(Cliente)
-            .filter(Cliente.id == cliente_id)
-            .order_by(Transacao.realizada_em.desc())
-            .limit(10)
+
+        transacoes_result = session.execute(
+            sqlalchemy.text(
+                """
+                    SELECT 
+                        transacoes.valor,
+                        transacoes.tipo,
+                        transacoes.descricao,
+                        transacoes.realizada_em,
+                        clientes.saldo,
+                        clientes.limite
+                    FROM transacoes
+                    JOIN 
+                        clientes ON clientes.id = transacoes.cliente_id
+                    WHERE 
+                        clientes.id = :cliente_id
+                    ORDER BY 
+                        transacoes.realizada_em DESC
+                    LIMIT 10
+                """
+            ),
+            {'cliente_id': cliente_id}
+
         )
-        results = await session.execute(query)
-        for result in results.scalars():
+        results = transacoes_result.fetchall()
+        for result in results:
             transacao = TransacaoPublic(
-                valor=result.valor,
-                tipo=result.tipo,
-                descricao=result.descricao,
-                realizada_em=result.realizada_em
+                valor=result[0],
+                tipo=result[1],
+                descricao=result[2],
+                realizada_em=result[3]
             )
             ultimas_transacoes.append(transacao)
         extrato = Extrato(
